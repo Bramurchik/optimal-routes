@@ -1,6 +1,9 @@
 # Happy Fruit Delivery System
  The Clojure-based optimal routes calculation solution, made by the fourth team during the Symbolic Computation class.
- 
+
+# Team
+Daniil Khmelnytskyi, Alexander Markov, Kirill Shulyak, Teo Bocev, Ahmed Khaled Ibrahem Ali Allam
+
 This program helps delivery trucks find the best routes to take. It makes sure each city gets the supplies they need, while making sure trucks don't carry more than they can handle. The code for this is split into three main parts, which I'll explain one by one.
 
 # Development Workflow Challenges

@@ -55,7 +55,7 @@
 ;City marker as visited per truck ride
 (defn was-visited [node nodes]
   (map #(if (= (:name %) (:name node))
-          (Node. (:name %) true (:current %))
+          (Node. (:name %) true (:current %) (:min-capacity %) (:max-capacity %))
           %)
        nodes))
 ;Function for a check if a city needs more goods (below minimum supply and not yet delivered to).
@@ -105,23 +105,31 @@
             supplier (find-nearest-supplier current-location target-node needed-amount nodes edges min-amount)]
         (when supplier
           (swap! delivered-to conj (:name target-node))
-          {:truck-id (:id truck)
-           :from (:name supplier)
-           :to (:name target-node)
-           :amount needed-amount
+          {:truck-id       (:id truck)
+           :from           (:name supplier)
+           :to             (:name target-node)
+           :amount         needed-amount
            :total-distance (+ (or (get-distance (:name current-location) (:name supplier)) 0)
                               (or (get-distance (:name supplier) (:name target-node)) 0))})))))
 
 ;;Main functions
 
-;Function, that generates paths for all trucks
-(defn generate-all-routes [nodes edges min-amount]
+;Function, that generates paths for all trucks   ;TODO add support of generation routes for multiple days
+(defn generate-all-routes [nodes edges min-amount days]
   (reset! delivered-to #{})
-  (keep #(plan-delivery-route % nodes edges min-amount) trucks))
+  (doseq [day (range 1 (inc days))]
+    (println (str "\nTrading day " day ":"))
+    (doseq [truck trucks]
+      (if-let [route (plan-delivery-route truck nodes edges min-amount)]
+        (do
+          (println (str "Truck number " (:truck-id route) " for day " day ":"))
+          (println (clojure.string/join "-" [(:from route) (:to route)])))
+        (println (str "Truck " (:id truck) " has no deliveries today."))))))
+
 
 (defn -main []
   (println "\nHappy Fruit Delivery Route Plan:")
-  (let [routes (generate-all-routes cities roads 50)]
+  (let [routes (generate-all-routes cities roads 50 3)]
     (if (seq routes)
       (doseq [route routes]
         (println (str "\nTruck " (:truck-id route) " Route:"))

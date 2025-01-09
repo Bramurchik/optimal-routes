@@ -1,42 +1,34 @@
 (ns optimal-route-calculator)
 
-;Data structures definition
-(defrecord Node [name was_here current])
+; Data structures definition with new parameters
+(defrecord Node [name was_here current min-capacity max-capacity])
 (defrecord Edge [node1 node2 distance])
 
 
 
-;List of cities as nodes
+;list of cities as nodes
 (def cities
-  [(Node. "Warsaw" false 450)
-   (Node. "Krakow" false 0)
-   (Node. "Hamburg" false 80)
-   (Node. "Munich" false 10)
-   (Node. "Brno" false 0)
-   (Node. "Prague" false 50)
-   (Node. "Berlin" false 150)])
+  [(Node. "Budapest" false 250 100 250)
+   (Node. "Vienna" false 50 70 100)
+   (Node. "Prague" false 100 50 100)
+   (Node. "Berlin" false 40 50 100)
+   (Node. "Rome" false 150 100 250)])
 
 ;List of roads as edges
 (def roads
-  [(Edge. "Krakow" "Warsaw" 100)
-   (Edge. "Hamburg" "Berlin" 100)
-   (Edge. "Warsaw" "Berlin" 300)
-   (Edge. "Munich" "Berlin" 100)
-   (Edge. "Munich" "Innsbruck" 100)
-   (Edge. "Vienna" "Innsbruck" 200)
-   (Edge. "Vienna" "Budapest" 300)
-   (Edge. "Warsaw" "Budapest" 400)
-   (Edge. "Zagreb" "Budapest" 200)
-   (Edge. "Vienna" "Rome" 400)
-   (Edge. "Vienna" "Prague" 200)
-   (Edge. "Prague" "Brno" 100)
-   (Edge. "Prague" "Budapest" 300)])
+  [(Edge. "Budapest" "Vienna" 200)
+   (Edge. "Vienna" "Prague" 300)
+   (Edge. "Prague" "Berlin" 400)
+   (Edge. "Vienna" "Berlin" 250)
+   (Edge. "Budapest" "Rome" 500)
+   (Edge. "Rome" "Prague" 600)])
 
 
 ;Trucks data structure with needed parameters
 (def trucks
-  [{:id 1 :capacity 50 :location "Warsaw" :cargo 0}
-   {:id 2 :capacity 50 :location "Berlin" :cargo 0}])
+  [{:id 1 :capacity 30 :location "Prague" :cargo 0}
+   {:id 2 :capacity 30 :location "Rome" :cargo 0}
+   {:id 3 :capacity 30 :location "Budapest" :cargo 0}])
 
 ;Global atom for storing info about cities, which was visited by truck already this day
 (def delivered-to (atom #{}))

@@ -20,14 +20,7 @@
    (->Edge "Prague"   "Berlin" 400)
    (->Edge "Vienna"   "Berlin" 250)
    (->Edge "Budapest" "Rome"   500)
-   (->Edge "Rome"     "Prague" 600)
-   ;; Duplication of roads between cities for unoriented edges
-   (->Edge "Vienna"   "Budapest" 200)
-   (->Edge "Prague"   "Vienna"   300)
-   (->Edge "Berlin"   "Prague"   400)
-   (->Edge "Berlin"   "Vienna"   250)
-   (->Edge "Rome"     "Budapest" 500)
-   (->Edge "Prague"   "Rome"     600)])
+   (->Edge "Rome"     "Prague" 600)])
 
 ;; Trucks data structure with needed parameters
 (def trucks
@@ -37,13 +30,12 @@
      3 {:id 3 :capacity 30 :location "Budapest" :cargo 0}}))
 
 ;; Delivery requests data structure
-;; !! IMPORTANT !! roads should be stings not a keywords
 (def daily-demands
-  [ {"Vienna" 10 "Berlin" 10}
-   {"Prague" 10 "Vienna" 35}
-   {} ])
+  [{"Vienna" 10 "Berlin" 10}
+   {"Prague" 15}
+   {"Vienna" 35}])
 
-;: Global atom for storing info about cities, which was visited by truck already this day
+;; Global atom for storing info about cities, which were visited by truck already this day
 (def delivered-to (atom #{}))
 
 ;; -----------------------------
@@ -71,34 +63,35 @@
 
 ;; Dijkstra based shortest path finder algotithm
 (defn dijkstra-shortest-path [start-node end-node nodes edges]
-  (let [all-names   (map :name nodes)
-        unvisited   (atom (set all-names))
-        distances   (atom (zipmap all-names (repeat Double/POSITIVE_INFINITY)))
-        previous    (atom {})]
-    (swap! distances assoc start-node 0) ;; Starting point
-
-    (while (seq @unvisited)
-      (let [current (apply min-key #(get @distances %) @unvisited)]
-        (swap! unvisited disj current)
-        (doseq [neighbor (get-neighbors current edges)]
-          (when (contains? @unvisited neighbor)
-            (let [alt (+ (get @distances current)
-                         (get-distance current neighbor))]
-              (when (< alt (get @distances neighbor))
-                (swap! distances assoc neighbor alt)
-                (swap! previous assoc neighbor current)))))))
-
-    ;; Path retracing
-    (if (Double/isInfinite (get @distances end-node))
-      nil
-      (loop [path []
-             node end-node]
-        (if node
-          (recur (conj path node) (get @previous node))
-          (reverse path))))))
+  (when (and (some #(= (:name %) start-node) nodes)
+             (some #(= (:name %) end-node) nodes))
+    (let [all-names   (map :name nodes)
+          unvisited   (atom (set all-names))
+          distances   (atom (zipmap all-names (repeat Double/POSITIVE_INFINITY)))
+          previous    (atom {})]
+      (swap! distances assoc start-node 0)
+      (while (seq @unvisited)
+        (let [current (apply min-key #(get @distances %) @unvisited)]
+          (swap! unvisited disj current)
+          (doseq [neighbor (get-neighbors current edges)]
+            (when (contains? @unvisited neighbor)
+              (let [alt (+ (get @distances current)
+                           (get-distance current neighbor))]
+                (when (< alt (get @distances neighbor))
+                  (swap! distances assoc neighbor alt)
+                  (swap! previous assoc neighbor current)))))))
+      (if (Double/isInfinite (get @distances end-node))
+        nil
+        (loop [path []
+               node end-node]
+          (if node
+            (recur (conj path node) (get @previous node))
+            (reverse path)))))))
 
 (defn path-distance [path]
-  (reduce + (map #(get-distance %1 %2) path (rest path))))
+  (if (nil? path)
+    Double/POSITIVE_INFINITY
+    (reduce + (map #(get-distance %1 %2) path (rest path)))))
 
 ;; Algorithm that choose the closest truck to the city
 (defn best-truck-for-city [city-name trucks-map nodes edges]
@@ -127,19 +120,22 @@
         (println "No deliveries for this day.")
         (doseq [[city need-amount] demands]
           (when (pos? need-amount)
-            (let [[chosen-truck route total-dist]
-                  (best-truck-for-city city @trucks cities roads)]
-              (if (nil? route)
-                (println "No route found for" city "!")
-                (do
-                  (println (str "Truck " (:id chosen-truck)
-                                " delivers " need-amount " units to " city))
-                  (println (str "  Route: " (str/join " -> " route)))
-                  (println (str "  Distance: " total-dist " km"))
-                  ;; Truck location updation
-                  (swap! trucks update (:id chosen-truck)
-                         #(assoc % :location city))
-                  (swap! delivered-to conj city)))))))))
+            (loop [remaining need-amount]
+              (when (pos? remaining)
+                (let [[chosen-truck route total-dist]
+                      (best-truck-for-city city @trucks cities roads)]
+                  (if (nil? route)
+                    (println "No route found for" city "!")
+                    (let [truck-cap (:capacity chosen-truck)
+                          deliver-now (min truck-cap remaining)]
+                      (println (str "Truck " (:id chosen-truck)
+                                    " delivers " deliver-now " units to " city))
+                      (println (str "  Route: " (str/join " -> " route)))
+                      (println (str "  Distance: " total-dist " km"))
+                      (swap! trucks update (:id chosen-truck)
+                             #(assoc % :location city))
+                      (swap! delivered-to conj city)
+                      (recur (- remaining deliver-now))))))))))))
   (println "\nDelivery plan completed for all days."))
 
 ;; -----------------------------
@@ -149,6 +145,5 @@
   (println "Starting Happy Fruit Delivery System...\n")
   (deliver-for-all-days)
   (println "\nProgram completed."))
-
 
 (-main)
